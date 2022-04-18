@@ -53,7 +53,7 @@ class Robot(smach.State):
     def __init__(self):
         smach.State.__init__(self,
                             outcomes=['perception', 'robot_responds_human'],
-                            input_keys=['human_letter_to_robot', 'object_names', 'finalGuesses'])
+                            input_keys=['human_letter_to_robot', 'object_names', 'robot_response'])
 
     def execute(self, userdata):
 
@@ -67,7 +67,7 @@ class Robot(smach.State):
             print("Objects detected are:")
             for i in range(len(userdata.object_names)):
                 if(userdata.object_names[i][0] == userdata.human_letter_to_robot):
-                    userdata.finalGuesses.append( userdata.object_names[i])
+                    userdata.robot_response.append( userdata.object_names[i])
                 #print(userdata.object_names[i])
             return 'robot_responds_human'
 
@@ -145,7 +145,7 @@ def main():
                                "robot_responds_human" : "HUMAN"},
                                remapping={"human_letter_to_robot" : "sm_letter",
                                "object_names" : "guess_list",
-                               "finalGuesses" : "final_guess"})
+                               "robot_response" : "final_guess"})
 
         smach.StateMachine.add('PERCEPTION', Perception(), 
                                transitions={'objects' : 'ROBOT'},

@@ -126,7 +126,7 @@ class Perception(smach.State):
         #rospy.loginfo("started")
         client = actionlib.SimpleActionClient('/darknet_ros/check_for_objects', darknet_ros_msgs.msg.CheckForObjectsAction)
         client.wait_for_server()
-        cv_message = cv2.imread('/home/soroush/Pictures/Yellow-Lab-High-Five.jpg')
+        cv_message = cv2.imread('/home/soroush/Pictures/index.jpeg')
         image_message = bridge.cv2_to_imgmsg(cv_message, encoding="rgb8")
         goal = darknet_ros_msgs.msg.CheckForObjectsGoal(image=image_message)
         client.send_goal(goal)

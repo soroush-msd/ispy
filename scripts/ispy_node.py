@@ -3,6 +3,7 @@
 from time import sleep
 import rospy
 import smach
+import smach_ros
 import sys
 import roslaunch
 import actionlib
@@ -51,9 +52,12 @@ class Human(smach.State):
                 sys.exit("usage: H/h || R/r")
 
         else:
-            print("1111111111111111111111111111111111111111111111*")
+            #print("1111111111111111111111111111111111111111111111*")
             if(userdata.asks == "h"):
-                print("222222222222222222222222222222222222222222")
+                #print("222222222222222222222222222222222222222222")
+                if(len(userdata.robot_guesses) == 0):
+                    print("Object that starts with " + userdata.human_letter + " not found!")
+                    return 'exit_fail'
                 for i in range(len(userdata.robot_guesses)):
                     print("*********************************************")
                     print("The object that starts with " + userdata.human_letter+ " is " + userdata.robot_guesses[i])
@@ -62,14 +66,14 @@ class Human(smach.State):
             elif(userdata.asks == "r"):
                 print("robot chose the letter: " + userdata.robot_guesses[0])
                 human_guess = raw_input("what is the object?")
-                for i in range(len(userdata.object_names)):
-                    if(human_guess == userdata.object_names[i]):
-                        print("YAAY, The Object is " + userdata.object_names[i])
-                        return 'exit_success'
+                #for i in range(len(userdata.object_names)):
+                if(human_guess == userdata.object_names[0] and human_guess[0] == userdata.robot_guesses[0]):
+                    print("YAAY, The Object is " + userdata.object_names[0])
+                    return 'exit_success'
                     
-                print("Oh No!, you guessed wrong" + userdata.object_names[i])
+                print("Oh No!, you guessed wrong" + "The correct object is " +  userdata.object_names[0])
                 return 'exit_fail'
-        print("3333333333333333333333333333333333333333333333333333")
+        #print("3333333333333333333333333333333333333333333333333333")
                         
                 
         
@@ -79,17 +83,23 @@ class Human(smach.State):
 class Robot(smach.State):
     def __init__(self):
         smach.State.__init__(self,
-                            outcomes=['perception', 'robot_responds_human', 'exit_success'],
+                            outcomes=['perception', 'robot_responds_human', 'exit_success', 'exit_fail'],
                             input_keys=['human_letter_to_robot', 'object_names', 'robot_response', 'asks'])
 
     def execute(self, userdata):
 
         rospy.loginfo('Executing state ROBOT')
+        global counter
 
         if(userdata.asks=="h"):
             if((len(userdata.object_names) == 0)):
-                print("Robot searching for an object that starts with <<" + userdata.human_letter_to_robot + ">>...")
-                return 'perception'
+                if counter < 3:
+                    print("Robot searching for an object that starts with <<" + userdata.human_letter_to_robot + ">>...")
+                    counter += 1
+                    return 'perception'
+                else:
+                    print("NO object found")
+                    return 'exit_fail'
         
             elif((len(userdata.object_names) != 0)):
                 print("Objects detected are:")
@@ -101,11 +111,17 @@ class Robot(smach.State):
 
         elif(userdata.asks =="r"):
             if((len(userdata.object_names) == 0)):
-                print("looking around")
-                return 'perception'
+                if counter < 3:
+                    print("looking around")
+                    counter += 1
+                    return 'perception'
+                else:
+                    print("NO object found")
+                    return 'exit_fail'
 
             elif((len(userdata.object_names) != 0)):
                 random_word = random.choice(userdata.object_names)
+                userdata.object_names[0] = random_word
                 userdata.robot_response.append(random_word[0])
                 return 'robot_responds_human'
 
@@ -190,6 +206,8 @@ class Vision(smach.State):
 
 # main
 def main():
+    #global counter
+    
     rospy.init_node('ISpy_state_machine')
 
     # Create a SMACH state machine
@@ -199,6 +217,7 @@ def main():
     sm.userdata.final_guess = []
     sm.userdata.ask = ""
     sm.userdata.image_status = 0
+    
     #sm.userdata.bridge = CvBridge()
 
     # Open the container
@@ -216,7 +235,8 @@ def main():
         smach.StateMachine.add('ROBOT', Robot(), 
                                transitions={'perception' : 'PERCEPTION',
                                "robot_responds_human" : "HUMAN",
-                               'exit_success' : 'successfull'},
+                               'exit_success' : 'successfull',
+                               'exit_fail' : 'failed'},
                                remapping={"human_letter_to_robot" : "sm_letter",
                                "object_names" : "guess_list",
                                "robot_response" : "final_guess",
@@ -240,8 +260,11 @@ def main():
     #rospy.Subscriber(image_topic, Image, image_callback)
     #counter = 1
     #rospy.spin()
+    sis = smach_ros.IntrospectionServer('ispy', sm, '/SM_ROOT')
+    sis.start()
     outcome = sm.execute()
-    
+    #rospy.spin()
+    sis.stop()
 
     # Execute SMACH plan
     
